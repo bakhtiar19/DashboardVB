@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSB Executive Sales & Profitability Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SignalR Client CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #10B981;
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: pulse 1.8s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen p-4 md:p-6">
+
+    <!-- Top Managerial Header -->
+    <header class="flex flex-col md:flex-row justify-between items-start md:items-center pb-6 border-b border-slate-800/80 gap-4">
+        <div>
+            <div class="flex items-center gap-3">
+                <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Executive Sales & Profitability Dashboard</h1>
+                <span class="flex items-center gap-2 bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 text-xs px-3 py-1 rounded-full font-medium">
+                    <span class="pulse-dot"></span> LIVE MONITORING
+                </span>
+            </div>
+            <p class="text-slate-400 text-sm mt-1">PT SSB Food & Beverage Indonesia — Ringkasan Kinerja Penjualan & Profitabilitas</p>
+        </div>
+
+        <div class="flex items-center gap-3 bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+            <div class="text-right pr-2 border-r border-slate-800">
+                <span class="text-[10px] text-slate-500 uppercase tracking-wider block">Status Sistem</span>
+                <span class="text-xs text-emerald-400 font-semibold flex items-center justify-end gap-1.5">
+                    <i class="fa-solid fa-circle-check text-[10px]"></i> Terhubung
+                </span>
+            </div>
+            <button onclick="fetchInitialData()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3.5 py-2 rounded-lg border border-slate-700 transition-all flex items-center gap-2 font-medium">
+                <i class="fa-solid fa-rotate-right"></i> Perbarui Data
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Managerial Metric Cards Grid -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mt-6">
+        <!-- Revenue Card -->
+        <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-lg relative overflow-hidden" id="card-revenue">
+            <div class="flex justify-between items-center text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                <span>Total Pendapatan (Revenue)</span>
+                <div class="w-8 h-8 rounded-lg bg-sky-950/80 border border-sky-800/60 flex items-center justify-center text-sky-400">
+                    <i class="fa-solid fa-wallet text-sm"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-extrabold text-white mt-3" id="kpi-revenue">Rp 0</div>
+            <div class="text-xs text-slate-400 mt-1" id="kpi-lines">0 Trx Lines</div>
+        </div>
+
+        <!-- Gross Profit Card -->
+        <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-lg relative overflow-hidden">
+            <div class="flex justify-between items-center text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                <span>Laba Kotor (Gross Profit)</span>
+                <div class="w-8 h-8 rounded-lg bg-emerald-950/80 border border-emerald-800/60 flex items-center justify-center text-emerald-400">
+                    <i class="fa-solid fa-chart-line text-sm"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-extrabold text-emerald-400 mt-3" id="kpi-profit">Rp 0</div>
+            <div class="text-xs text-slate-400 mt-1" id="kpi-cogs">COGS: Rp 0</div>
+        </div>
+
+        <!-- Gross Margin % Card -->
+        <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-lg relative overflow-hidden">
+            <div class="flex justify-between items-center text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                <span>Margin Laba Kotor (%)</span>
+                <div class="w-8 h-8 rounded-lg bg-amber-950/80 border border-amber-800/60 flex items-center justify-center text-amber-400">
+                    <i class="fa-solid fa-percent text-sm"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-extrabold text-amber-400 mt-3" id="kpi-margin">0%</div>
+            <div class="text-xs text-slate-400 mt-1">Rata-rata Profit Efisiensi</div>
+        </div>
+
+        <!-- Total Orders Card -->
+        <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-lg relative overflow-hidden">
+            <div class="flex justify-between items-center text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                <span>Total Struk (Orders)</span>
+                <div class="w-8 h-8 rounded-lg bg-indigo-950/80 border border-indigo-800/60 flex items-center justify-center text-indigo-400">
+                    <i class="fa-solid fa-receipt text-sm"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-extrabold text-white mt-3" id="kpi-orders">0</div>
+            <div class="text-xs text-slate-400 mt-1" id="kpi-qty">0 Pcs Item Terjual</div>
+        </div>
+
+        <!-- Avg Order Value Card -->
+        <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-lg relative overflow-hidden">
+            <div class="flex justify-between items-center text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                <span>Rata-Rata Transaksi (AOV)</span>
+                <div class="w-8 h-8 rounded-lg bg-purple-950/80 border border-purple-800/60 flex items-center justify-center text-purple-400">
+                    <i class="fa-solid fa-basket-shopping text-sm"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-extrabold text-purple-300 mt-3" id="kpi-aov">Rp 0</div>
+            <div class="text-xs text-slate-400 mt-1">Nilai per Struk Penjualan</div>
+        </div>
+    </section>
+
+    <!-- Managerial Charts Section -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <!-- Sales & Profit Trend Line Chart -->
+        <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-lg">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chart-area text-sky-400"></i> Tren Penjualan & Laba Kotor
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Grafik perbandingan akumulasi pendapatan dan laba kotor</p>
+                </div>
+                <span class="text-xs text-slate-500 bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700/60">Harian</span>
+            </div>
+            <div class="h-64 relative">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Outlet Performance Bar Chart -->
+        <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-lg">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-store text-emerald-400"></i> Performa Seluruh Outlet
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Perbandingan Pendapatan & Laba Kotor antar cabang</p>
+                </div>
+                <span class="text-xs text-slate-500 bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700/60">10 Cabang</span>
+            </div>
+            <div class="h-64 relative">
+                <canvas id="outletChart"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <!-- Top Menu Performance & Table -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+        <!-- Top Menu Profitability Horizontal Bar -->
+        <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-lg lg:col-span-1">
+            <div class="mb-4">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-utensils text-amber-400"></i> Top 5 Menu Paling Menguntungkan
+                </h3>
+                <p class="text-xs text-slate-400 mt-0.5">Peringkat menu dengan kontribusi laba kotor tertinggi</p>
+            </div>
+            <div class="h-80 relative">
+                <canvas id="menuChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Outlet Performance Table -->
+        <div class="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-lg lg:col-span-2 overflow-hidden">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h3 class="text-base font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-table text-indigo-400"></i> Rincian Kinerja Penjualan per Outlet
+                    </h3>
+                    <p class="text-xs text-slate-400 mt-0.5">Tabel kontribusi pendapatan, volume transaksi, dan rasio margin</p>
+                </div>
+                <span class="text-xs text-slate-400 bg-slate-800/80 px-3 py-1 rounded-lg border border-slate-700/60" id="last-updated">Sinkronisasi: -</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-300">
+                    <thead class="bg-slate-950 text-slate-400 font-semibold uppercase border-b border-slate-800">
+                        <tr>
+                            <th class="py-3.5 px-4">Nama Outlet</th>
+                            <th class="py-3.5 px-4">Kota</th>
+                            <th class="py-3.5 px-4 text-right">Total Struk</th>
+                            <th class="py-3.5 px-4 text-right">Pendapatan</th>
+                            <th class="py-3.5 px-4 text-right">Laba Kotor</th>
+                            <th class="py-3.5 px-4 text-right">Margin (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="outletTableBody" class="divide-y divide-slate-800/60">
+                        <!-- Dynamic Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Managerial Footer -->
+    <footer class="mt-8 text-center text-xs text-slate-500 border-t border-slate-800/80 pt-4 pb-2">
+        <p>© 2026 PT SSB Food & Beverage Indonesia — Executive Management Information System</p>
+    </footer>
+
+    <!-- JavaScript Logic with SignalR WebSockets -->
+    <script>
+        let trendChartObj = null;
+        let outletChartObj = null;
+        let menuChartObj = null;
+
+        function formatRupiah(num) {
+            return 'Rp ' + Math.round(num).toLocaleString('id-ID');
+        }
+
+        async function fetchInitialData() {
+            try {
+                const [kpiRes, trendRes, outletRes, menuRes] = await Promise.all([
+                    fetch('/api/kpi'),
+                    fetch('/api/sales-trend'),
+                    fetch('/api/outlets'),
+                    fetch('/api/menus')
+                ]);
+
+                const kpi = await kpiRes.json();
+                const trend = await trendRes.json();
+                const outlets = await outletRes.json();
+                const menus = await menuRes.json();
+
+                renderDashboard(kpi, trend, outlets, menus);
+                document.getElementById('last-updated').innerText = 'Pembaruan: ' + new Date().toLocaleTimeString('id-ID');
+            } catch (err) {
+                console.error("Error fetching initial data:", err);
+            }
+        }
+
+        function renderDashboard(kpi, trend, outlets, menus) {
+            updateKPI(kpi);
+            updateTrendChart(trend);
+            updateOutletChart(outlets);
+            updateMenuChart(menus);
+            updateOutletTable(outlets);
+        }
+
+        function updateKPI(kpi) {
+            document.getElementById('kpi-revenue').innerText = formatRupiah(kpi.total_revenue || 0);
+            document.getElementById('kpi-lines').innerText = (kpi.total_sales_lines || 0).toLocaleString('id-ID') + ' Baris Transaksi';
+            document.getElementById('kpi-profit').innerText = formatRupiah(kpi.gross_profit || 0);
+            document.getElementById('kpi-cogs').innerText = 'HPP / COGS: ' + formatRupiah(kpi.total_cogs || 0);
+            document.getElementById('kpi-margin').innerText = (kpi.gross_margin_pct || 0) + '%';
+            document.getElementById('kpi-orders').innerText = (kpi.total_orders || 0).toLocaleString('id-ID');
+            document.getElementById('kpi-qty').innerText = (kpi.total_quantity || 0).toLocaleString('id-ID') + ' Pcs Terjual';
+            document.getElementById('kpi-aov').innerText = formatRupiah(kpi.avg_order_value || 0);
+        }
+
+        function updateTrendChart(data) {
+            const labels = data.map(d => d.sales_date);
+            const revenues = data.map(d => d.daily_revenue);
+            const profits = data.map(d => d.daily_profit);
+
+            if (!trendChartObj) {
+                const ctx = document.getElementById('trendChart').getContext('2d');
+                trendChartObj = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Pendapatan',
+                                data: revenues,
+                                borderColor: '#38BDF8',
+                                backgroundColor: 'rgba(56, 189, 248, 0.08)',
+                                fill: true,
+                                tension: 0.3
+                            },
+                            {
+                                label: 'Laba Kotor',
+                                data: profits,
+                                borderColor: '#10B981',
+                                backgroundColor: 'transparent',
+                                borderDash: [4, 4],
+                                tension: 0.3
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: '#94A3B8' } } },
+                        scales: {
+                            x: { ticks: { color: '#64748B' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                            y: { ticks: { color: '#64748B' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+                        }
+                    }
+                });
+            } else {
+                trendChartObj.data.labels = labels;
+                trendChartObj.data.datasets[0].data = revenues;
+                trendChartObj.data.datasets[1].data = profits;
+                trendChartObj.update();
+            }
+        }
+
+        function updateOutletChart(data) {
+            const labels = data.map(d => d.outlet_name);
+            const revenues = data.map(d => d.total_revenue);
+            const profits = data.map(d => d.gross_profit);
+
+            if (!outletChartObj) {
+                const ctx = document.getElementById('outletChart').getContext('2d');
+                outletChartObj = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            { label: 'Pendapatan', data: revenues, backgroundColor: '#38BDF8' },
+                            { label: 'Laba Kotor', data: profits, backgroundColor: '#10B981' }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { labels: { color: '#94A3B8' } } },
+                        scales: {
+                            x: { ticks: { color: '#64748B' }, grid: { display: false } },
+                            y: { ticks: { color: '#64748B' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+                        }
+                    }
+                });
+            } else {
+                outletChartObj.data.labels = labels;
+                outletChartObj.data.datasets[0].data = revenues;
+                outletChartObj.data.datasets[1].data = profits;
+                outletChartObj.update();
+            }
+        }
+
+        function updateMenuChart(data) {
+            const top5 = data.slice(0, 5);
+            const labels = top5.map(d => d.menu_name);
+            const profits = top5.map(d => d.gross_profit);
+
+            if (!menuChartObj) {
+                const ctx = document.getElementById('menuChart').getContext('2d');
+                menuChartObj = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{ label: 'Laba Kotor', data: profits, backgroundColor: '#F59E0B' }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { ticks: { color: '#64748B' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                            y: { ticks: { color: '#CBD5E1' }, grid: { display: false } }
+                        }
+                    }
+                });
+            } else {
+                menuChartObj.data.labels = labels;
+                menuChartObj.data.datasets[0].data = profits;
+                menuChartObj.update();
+            }
+        }
+
+        function updateOutletTable(data) {
+            const tbody = document.getElementById('outletTableBody');
+            tbody.innerHTML = '';
+
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/80 transition-colors';
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-semibold text-white">${row.outlet_name}</td>
+                    <td class="py-3 px-4 text-slate-400">${row.city}</td>
+                    <td class="py-3 px-4 text-right font-mono">${row.total_orders.toLocaleString('id-ID')}</td>
+                    <td class="py-3 px-4 text-right font-mono text-sky-400">${formatRupiah(row.total_revenue)}</td>
+                    <td class="py-3 px-4 text-right font-mono text-emerald-400">${formatRupiah(row.gross_profit)}</td>
+                    <td class="py-3 px-4 text-right font-mono font-bold ${row.gross_margin_pct >= 50 ? 'text-emerald-400' : 'text-amber-400'}">${row.gross_margin_pct}%</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Initialize SignalR Connection
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/dashboardHub")
+            .withAutomaticReconnect()
+            .build();
+
+        // Real-Time Background Synchronization
+        connection.on("ReceiveDashboardUpdate", function (kpiJson, trendJson, outletsJson, menusJson) {
+            const kpi = JSON.parse(kpiJson);
+            const trend = JSON.parse(trendJson);
+            const outlets = JSON.parse(outletsJson);
+            const menus = JSON.parse(menusJson);
+
+            renderDashboard(kpi, trend, outlets, menus);
+            document.getElementById('last-updated').innerText = 'Pembaruan: ' + new Date().toLocaleTimeString('id-ID');
+        });
+
+        connection.start().then(function () {
+            console.log("Connected to Executive Dashboard System.");
+        }).catch(function (err) {
+            console.error("Connection Error:", err.toString());
+        });
+
+        // Initial Load
+        fetchInitialData();
+    </script>
+</body>
+</html>
